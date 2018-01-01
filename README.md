@@ -4,12 +4,13 @@ Dform
 
 # 1. About
 
-- Injecting sql method to Dataframe 
+- Injecting sql method to Dataframe
+- tested with pandas==0.22.0, python==3.6.3
 
 # 2. Installation
 
 ```python
-pip install dform
+pip install -U dform
 ```
 
 # 3. Implement
