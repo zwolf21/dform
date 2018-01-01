@@ -248,12 +248,27 @@ def aggregate(self, **aggset):
 
 
 def compare(self, other, pk):
+    other = pd.DataFrame(other)
+    
     if isinstance(pk, str):
         pk = [pk]
-    other = pd.DataFrame(other)
+    
+    andcols = set(self.columns)&set(other.columns)
+    xorcols = set(self.columns)^set(other.columns)
+
+    for pkcol in pk:
+        df1_hasnull = getattr(self, pkcol).isnull().any()
+        df2_hasnull = getattr(other, pkcol).isnull().any()
+
+        if any([df1_hasnull, df2_hasnull]):
+            raise ValueError('pk has null value: {}'.format(pkcol))
+
     df1 = self.set_index(pk)
     df2 = other.set_index(pk)
-    xorcols = set(self.columns)^set(other.columns)
+
+    if not all([df1.index.is_unique, df2.index.is_unique]):
+        raise ValueError('pk is not unique {}'.format(pk))
+
     for miscol in xorcols:
         if miscol in df1.columns:
             df1=df1.drop(columns=[miscol])
@@ -280,7 +295,7 @@ def compare(self, other, pk):
     ch_from = df_changed_from.stack().dropna()
     ch_to = df_changed_to.stack().dropna()
     ch_info = pd.concat([ch_from, ch_to], axis=1, keys=['from', 'to'])
-    ch_info.index.names = ['pk', 'column']
+    ch_info.index.names = pk+['where']
     ch_info.reset_index(inplace=True)
     
     nt = namedtuple('compare', 'added deleted changes')
