@@ -248,7 +248,8 @@ def aggregate(self, **aggset):
 
 
 def compare(self, other, pk):
-    other = pd.DataFrame(other)
+    df1 = pd.DataFrame(self)
+    df2 = pd.DataFrame(other)
     
     if isinstance(pk, str):
         pk = [pk]
@@ -256,12 +257,35 @@ def compare(self, other, pk):
     andcols = set(self.columns)&set(other.columns)
     xorcols = set(self.columns)^set(other.columns)
 
-    for pkcol in pk:
-        df1_hasnull = getattr(self, pkcol).isnull().any()
-        df2_hasnull = getattr(other, pkcol).isnull().any()
+    # for pkcol in pk:
+    #     df1_hasnull = getattr(self, pkcol).isnull().any()
+    #     df2_hasnull = getattr(other, pkcol).isnull().any()
 
-        if any([df1_hasnull, df2_hasnull]):
-            raise ValueError('pk has null value: {}'.format(pkcol))
+    #     if any([df1_hasnull, df2_hasnull]):
+    #         raise ValueError('pk has null value: {}'.format(pkcol))
+
+    print('len(pk):', len(pk))
+    if len(pk) > 1:
+        pk_name = '-'.join(pk)
+        pkcol1 = None
+        pkcol2 = None
+        for i, p in enumerate(pk):
+            col1 = df1[p].astype(str)
+            col2 = df2[p].astype(str)
+
+            if all([col1.isnull().any(), col2.isnull().any()]):
+                raise ValueError('pk has null value: {}'.format(p))
+
+            if pkcol1 is None and pkcol2 is None:
+                pkcol1 = col1
+                pkcol2 = col2
+            else:
+                pkcol1 = pkcol1 + '-' + col1
+                pkcol2 = pkcol2 + '-' + col2
+
+        pk = [pk_name]
+        df1[pk_name] = pkcol1
+        df2[pk_name] = pkcol2
 
     df1 = self.set_index(pk)
     df2 = other.set_index(pk)
