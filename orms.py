@@ -248,32 +248,28 @@ def aggregate(self, **aggset):
 
 
 def compare(self, other, pk):
-    other = pd.DataFrame(other)
-    
     if isinstance(pk, str):
         pk = [pk]
-    
-    andcols = set(self.columns)&set(other.columns)
-    xorcols = set(self.columns)^set(other.columns)
+    other = pd.DataFrame(other)
 
+    df1 = self.reset_index()
+    df2 = other.reset_index()
+    
     for pkcol in pk:
-        df1_hasnull = getattr(self, pkcol).isnull().any()
-        df2_hasnull = getattr(other, pkcol).isnull().any()
+        df1_hasnull = df1[pkcol].isnull().any()
+        df2_hasnull = df2[pkcol].isnull().any()
 
         if any([df1_hasnull, df2_hasnull]):
             raise ValueError('pk has null value: {}'.format(pkcol))
 
-    df1 = self.set_index(pk)
-    df2 = other.set_index(pk)
+    df1.set_index(pk, inplace=True)
+    df2.set_index(pk, inplace=True)
 
     if not all([df1.index.is_unique, df2.index.is_unique]):
         raise ValueError('pk is not unique {}'.format(pk))
 
-    for miscol in xorcols:
-        if miscol in df1.columns:
-            df1=df1.drop(columns=[miscol])
-        if miscol in df2.columns:
-            df2=df2.drop(columns=[miscol])
+    df1.drop(columns=set(df1.columns)-set(df2.columns), inplace=True)
+    df2.drop(columns=set(df2.columns)-set(df1.columns), inplace=True)
 
     mask_added = df2.index.difference(df1.index)
     mask_deleted = df1.index.difference(df2.index)
