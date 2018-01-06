@@ -23,7 +23,7 @@ def _concat_ops(self, ops=[not_op,isin_op,regex_op,cmp_ops,range_ops]):
 
 def _get_mask(self, colnm, op, val):
     nt = False
-    s = getattr(self, colnm)
+    s = self[colnm]
     if not_op in op:
         nt = True
         op = op.replace(not_op, '')
@@ -68,7 +68,6 @@ def _get_mask(self, colnm, op, val):
 
 def _exp_parser(self, colexp):
     matched = list(filter(lambda x:x==colexp, self.columns))
-
     if len(matched) == 1:
         return '==', matched[0]
     fixed = list(filter(lambda x: x in colexp, self.columns))
@@ -208,7 +207,8 @@ def annotate(self, **aggset):
                     for tgt, f in fset.items():
                         df[colnm] = df.groupby(g)[tgt].transform(f)
                 else:
-                    df[colnm] = getattr(df[g], fset)()
+                    # df[colnm] = getattr(df[g], fset)()
+                    df[colnm] = df[g][fset]()
         elif isinstance(app, set):
             if app:
                 df[colnm] = df[app.pop()]
@@ -247,13 +247,13 @@ def aggregate(self, **aggset):
         return df.rename(columns={list(fset)[0]:retcol})
 
 
-def compare(self, other, pk):
+def compare(self, other, pk, as_index=False):
     if isinstance(pk, str):
         pk = [pk]
     other = pd.DataFrame(other)
 
-    df1 = self.reset_index()
-    df2 = other.reset_index()
+    df1 = self.copy()
+    df2 = other.copy()
     
     for pkcol in pk:
         df1_hasnull = df1[pkcol].isnull().any()
@@ -293,7 +293,8 @@ def compare(self, other, pk):
     ch_info = pd.concat([ch_from, ch_to], axis=1, keys=['from', 'to'])
     ch_info.index.names = pk+['where']
     ch_info.reset_index(inplace=True)
-    ch_info.set_index(pk+['where'], inplace=True)
+    if as_index == True:
+        ch_info.set_index(pk+['where'], inplace=True)
     
     nt = namedtuple('compare', 'added deleted changes')
     comp = nt(added=df_added, deleted=df_deleted, changes=ch_info)
@@ -328,7 +329,6 @@ def top(self, column, ntop=1, ascending=False, **kwargs):
                 df = self.loc[self[column].rank() == rank_bottom][:ntop]
                 df = df.sort_values([column], ascending=ascending)
     return df
-
 
 def types(self, **typeset):
     '''Usage:
